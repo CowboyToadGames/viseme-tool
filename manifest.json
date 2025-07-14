@@ -1,0 +1,19 @@
+{
+  "name": "Lip Sync Animation Tool",
+  "short_name": "LipSync",
+  "description": "A tool for creating lip sync animations from audio and text.",
+  "start_url": "/lipsync/",
+  "display": "standalone",
+  "background_color": "#141414",
+  "theme_color": "#141414",
+  "orientation": "landscape-primary",
+  "scope": "/lipsync",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    }
+  ]
+}

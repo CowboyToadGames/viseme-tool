@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lip Sync Animation</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="/styles.css">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#141414">
+
+    <!-- Apple PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="LipSync">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background-color: var(--dark-secondary);
+            padding: 2rem;
+            border-radius: 1rem;
+            display: flex;
+            gap: 30px;
+        }
+
+        .form-section {
+            min-width: 400px;
+        }
+
+        .control-group {
+            margin-bottom: 2rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--light-primary);
+
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.5rem;
+            background-color: var(--dark-tertiary);
+            color: var(--light-primary);
+            transition: border-color 0.2s ease;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #ff7139;
+        }
+
+        textarea {
+            min-height: 2rem;
+            resize: none;
+        }
+
+        button {
+            background-color: #ff7139;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 10px;
+            transition: all 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background-color: #333;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .transcribe-btn {
+            background-color: #2196F3;
+        }
+
+        .export-btn {
+            background-color: #4CAF50;
+        }
+
+        #preview-area {
+            text-align: center;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #2a2a2a;
+            border-radius: 0.5rem;
+            border: 2px dashed #333;
+            min-height: 400px;
+        }
+
+        #render-canvas {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 0.5rem;
+        }
+
+        .viseme-fallback {
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 0.5rem;
+            font-size: 18px;
+            font-weight: 600;
+            color: #ff7139;
+        }
+
+        .error {
+            color: #ff4444;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
+        .status {
+            color: #2196F3;
+            font-style: italic;
+            display: none;
+        }
+
+        #ipa-output {
+            background-color: #2a2a2a;
+            border: 1px solid #333;
+            padding: 12px;
+            border-radius: 0.5rem;
+            min-height: 40px;
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+            color: #f4f4f9;
+        }
+
+        .info {
+            margin-top: 10px;
+            padding: 12px;
+            background-color: rgba(33, 150, 243, 0.1);
+            border: 1px solid rgba(33, 150, 243, 0.3);
+            border-radius: 0.5rem;
+            font-size: 14px;
+            display: none;
+            color: #b8b8b8;
+        }
+
+        .progress {
+            margin-top: 10px;
+            padding: 12px;
+            background-color: rgba(76, 175, 80, 0.1);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 0.5rem;
+            font-size: 14px;
+            display: none;
+            color: #b8b8b8;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                flex-direction: column;
+                max-width: 800px;
+            }
+
+            .form-section,
+            .preview-section {
+                min-width: unset;
+            }
+
+            #preview-area {
+                min-height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="form-section">
+            <div class="control-group">
+                <label for="api-key">Gemini API Key:</label>
+                <input type="password" id="api-key" placeholder="Enter your Gemini API key">
+                <div class="error" id="api-error"></div>
+            </div>
+
+            <div class="control-group">
+                <label for="character-select">Character:</label>
+                <select id="character-select">
+                    <option value="">Loading characters...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="angle-select">Angle:</label>
+                <select id="angle-select">
+                    <option value="">Select angle...</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="audio-file">Select Audio File:</label>
+                <input type="file" id="audio-file" accept="audio/*">
+                <div class="error" id="audio-error"></div>
+            </div>
+
+            <div class="control-group">
+                <label for="text-input">Text to Animate:</label>
+                <textarea id="text-input"
+                    placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
+                <button id="transcribe-btn" class="transcribe-btn" disabled>Convert to IPA</button>
+                <div class="status" id="transcribe-status">Converting to phonetic notation...</div>
+                <div class="error" id="transcribe-error"></div>
+            </div>
+
+            <div class="control-group">
+                <label for="ipa-output">IPA Phonetic Output:</label>
+                <div id="ipa-output">IPA transcription will appear here</div>
+            </div>
+
+            <div class="control-group">
+                <label for="framerate-select">Framerate (FPS):</label>
+                <select id="framerate-select">
+                    <option value="12">12 FPS</option>
+                    <option value="16" selected>16 FPS</option>
+                    <option value="24">24 FPS</option>
+                    <option value="30">30 FPS</option>
+                    <option value="60">60 FPS</option>
+                </select>
+            </div>
+
+            <button id="preview-btn" disabled>Preview Animation</button>
+            <button id="stop-btn" style="display: none;">Stop</button>
+            <button id="export-btn" class="export-btn" disabled>Export Video</button>
+
+            <div class="info" id="duration-info">
+                Audio Duration: <span id="duration-display">0</span> seconds
+            </div>
+
+            <div class="progress" id="export-progress">
+                Exporting: <span id="export-status">0 / 0</span> frames
+            </div>
+        </div>
+
+        <div class="preview-section">
+            <div id="preview-area">
+                <canvas id="render-canvas" width="1080" height="1080"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="lipsync.js"></script>
+</body>
+
+</html>
