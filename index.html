@@ -13,52 +13,41 @@
     <style>
         #render-canvas {
             width: 100%;
-            height: auto;
-            max-width: 100%;
-            border-radius: var(--pico-border-radius);
         }
     </style>
 </head>
 
-<body>
-    <!-- Authentication check and redirect -->
+<body style="min-height: 100vh; display: flex; align-items: center;">
     <script>
-        // Check if user is logged in before loading the main application
         const apiKey = localStorage.getItem('gemini_api_key');
         if (!apiKey) {
-            // Redirect to login page if not authenticated
             window.location.href = 'login.html';
         }
     </script>
-    <!-- Main Editor -->
     <main class="container">
         <h1>Viseme Tool</h1>
         <div class="grid">
             <section>
-                <fieldset>
-                    <label> Character: <select id="character-select">
-                            <option value="">Loading characters...</option>
-                        </select>
-                    </label>
-                    <label> Angle: <span id="angle-value">180°</span>
-                        <input type="range" id="angle-select" min="0" max="4" value="0" step="1" data-angles="270,225,180,135,90">
-                    </label>
-                    <label> Select Audio File: <input type="file" id="audio-file" accept="audio/*">
-                    </label>
-                    <label> Text to Animate: <textarea id="text-input" placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
-                    </label>
-                    <label> Framerate: <span id="framerate-value">20</span> FPS <input type="range" id="framerate-select" min="10" max="30" value="20" step="2">
-                    </label>
-                </fieldset>
-                <button id="preview-btn" class="outline">Preview Animation</button>
-                <button id="stop-btn" class="outline secondary" hidden>Stop</button>
-                <button id="export-btn" class="outline contrast" disabled>Export Video</button>
+                <label><i class="ti ti-user"></i> Character <select id="character-select">
+                        <option value="">Loading characters...</option>
+                    </select>
+                </label>
+                <label><i class="ti ti-angle"></i> <span id="angle-value">180°</span>
+                    <input type="range" id="angle-select" min="0" max="4" value="0" step="1" data-angles="270,225,180,135,90">
+                </label>
+                <label><i class="ti ti-file-music"></i> Audio <input type="file" id="audio-file" accept="audio/*">
+                </label>
+                <label><i class="ti ti-bubble-text"></i> Text <textarea id="text-input" placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
+                </label>
+                <label><i class="ti ti-video"></i> <span id="framerate-value">20</span> FPS <input type="range" id="framerate-select" min="10" max="30" value="20" step="2">
+                </label>
+                <div style="display: flex; justify-content: space-between;">
+                    <button id="preview-btn" class="outline contrast"><i class="ti ti-player-play-filled"></i> Preview</button>
+                    <button id="stop-btn" class="outline" hidden><i class="ti ti-player-stop-filled"></i> Stop</button>
+                    <button id="export-btn" class="contrast" disabled><i class="ti ti-download"></i> Export</button>
+                </div>
             </section>
-            <section>
-                <figure>
-                    <canvas id="render-canvas" width="1080" height="1080"></canvas>
-                </figure>
-            </section>
+            <canvas id="render-canvas" width="1080" height="1080"></canvas>
         </div>
     </main>
     <script src="lipsync.js"></script>

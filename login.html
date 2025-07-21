@@ -7,29 +7,46 @@
     <title>Login - Viseme Tool</title>
     <link rel="icon" type="image/png" sizes="32x32" href="https://cowboytoadgames.github.io/website/images/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        img {
+            max-width: 400px;
+            margin-bottom: 40px;
+        }
+
+        main {
+            max-width: 400px !important;
+        }
+    </style>
 </head>
 
 <body>
     <main class="container">
-        <article>
-            <header>
-                <img src="https://cowboytoad.games/images/logo.svg" height="200">
-            </header>
-            <form>
-                <fieldset role="group">
-                    <input type="password" id="login-api-key" placeholder="Enter your Gemini API key" aria-describedby="login-helper">
-                    <button type="submit" id="login-btn">Continue</button>
-                </fieldset>
-            </form>
-        </article>
+        <img src="https://cowboytoad.games/images/logo.svg">
+        <form>
+            <fieldset role="group">
+                <input type="password" id="login-api-key" placeholder="Gemini API Key" aria-describedby="login-helper">
+                <button type="submit" id="login-btn">Login</button>
+            </fieldset>
+        </form>
     </main>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const form = document.querySelector('form');
             const apiKeyInput = document.getElementById('login-api-key');
             const submitBtn = document.getElementById('login-btn');
+            submitBtn.disabled = true;
+
+            apiKeyInput.addEventListener('input', () => {
+                submitBtn.disabled = !apiKeyInput.value.trim();
+            });
 
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -45,11 +62,11 @@
 
                     if (response.ok) {
                         localStorage.setItem('gemini_api_key', apiKey);
-                        setTimeout(() => window.location.href = 'index.html', 1000);
+                        setTimeout(() => window.location.href = 'index.html', 750);
                     } else {
-                        apiKeyInput.setAttribute('aria-invalid', 'true');
-                        submitBtn.setAttribute('aria-busy', 'false');
-                        submitBtn.disabled = false;
+                        setTimeout(() => apiKeyInput.setAttribute('aria-invalid', 'true'), 750);
+                        setTimeout(() => submitBtn.setAttribute('aria-busy', 'false'), 750);
+                        setTimeout(() => submitBtn.disabled = false, 750);
                     }
                 } catch (error) {
                     apiKeyInput.setAttribute('aria-invalid', 'true');

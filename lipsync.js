@@ -50,9 +50,9 @@ class LipSyncApp {
     bindElements() {
         const elementIds = [
             'audio-file', 'text-input', 'preview-btn',
-            'stop-btn', 'duration-info', 'duration-display', 'render-canvas',
-            'audio-error', 'framerate-select', 'framerate-value', 'character-select',
-            'angle-select', 'angle-value', 'export-btn', 'export-progress', 'export-status'
+            'stop-btn', 'render-canvas',
+            'framerate-select', 'framerate-value', 'character-select',
+            'angle-select', 'angle-value', 'export-btn'
         ];
 
         elementIds.forEach(id => {
@@ -62,7 +62,6 @@ class LipSyncApp {
     }
 
     bindEvents() {
-        // Main app events
         this.audioFile.onchange = e => this.handleAudioFile(e);
         this.textInput.oninput = () => this.updateUI();
         this.previewBtn.onclick = () => this.startAnimation();
@@ -80,7 +79,6 @@ class LipSyncApp {
     }
 
     initAngleSlider() {
-        // Set initial angle to 180° (index 2 in the angles array)
         this.angleSelect.value = 2;
         this.handleAngleChange();
     }
@@ -149,7 +147,6 @@ class LipSyncApp {
     }
 
     handleAudioFile(e) {
-        this.clearAudioError();
         const file = e.target.files[0];
 
         if (!file) {
@@ -162,13 +159,10 @@ class LipSyncApp {
 
         audio.onloadedmetadata = () => {
             this.audioDuration = audio.duration;
-            this.durationDisplay.textContent = audio.duration.toFixed(2);
-            this.durationInfo.style.display = 'block';
             this.updateUI();
         };
 
         audio.onerror = () => {
-            this.showAudioError('Error loading audio file');
             this.resetAudio();
         };
     }
@@ -176,7 +170,6 @@ class LipSyncApp {
     resetAudio() {
         this.audioFile = null;
         this.audioDuration = 0;
-        this.durationInfo.style.display = 'none';
         this.updateUI();
     }
 
@@ -190,7 +183,6 @@ class LipSyncApp {
         this.previewBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
         this.exportBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
 
-        // Always update preview when not animating
         if (!this.animationId) {
             this.updatePreview();
         }
@@ -209,13 +201,6 @@ class LipSyncApp {
         }
     }
 
-    showAudioError(message) {
-        this.audioError.textContent = message;
-    }
-
-    clearAudioError() {
-        this.audioError.textContent = '';
-    }
 
     async convertTextToIPA(text) {
         const apiKey = this.apiKey;
@@ -370,9 +355,22 @@ class LipSyncApp {
         const text = this.textInput.value.trim();
         if (!text) return;
 
-        // Convert text to IPA on-demand
+        if (!this.audioFile) {
+            alert('Please upload an audio file first.');
+            return;
+        }
+
+        // Set ARIA busy state during API call
+        this.previewBtn.setAttribute('aria-busy', 'true');
+        
         const ipaPhonetics = await this.convertTextToIPA(text);
-        if (!ipaPhonetics) return;
+        if (!ipaPhonetics) {
+            this.previewBtn.setAttribute('aria-busy', 'false');
+            return;
+        }
+        
+        // Remove ARIA busy state after API call
+        this.previewBtn.setAttribute('aria-busy', 'false');
 
         const fps = parseInt(this.framerateSelect.value);
 
@@ -386,7 +384,7 @@ class LipSyncApp {
         this.audioElement.play();
 
         this.previewBtn.style.display = 'none';
-        this.stopBtn.style.display = 'inline-block';
+        this.stopBtn.hidden = false;
         this.exportBtn.disabled = true;
 
         const startTime = performance.now();
@@ -424,7 +422,7 @@ class LipSyncApp {
 
         this.displayViseme('MBP');
         this.previewBtn.style.display = 'inline-block';
-        this.stopBtn.style.display = 'none';
+        this.stopBtn.hidden = true;
         this.exportBtn.disabled = false;
         this.updateUI();
     }
@@ -433,15 +431,16 @@ class LipSyncApp {
         const text = this.textInput.value.trim();
         if (!text || !this.audioFile) return;
 
-        // Disable controls
         this.previewBtn.disabled = true;
         this.exportBtn.disabled = true;
         this.stopBtn.disabled = true;
-        this.exportProgress.style.display = 'block';
+        
+        // Set ARIA busy state during export process
+        this.exportBtn.setAttribute('aria-busy', 'true');
 
-        // Convert text to IPA on-demand
         const ipaPhonetics = await this.convertTextToIPA(text);
         if (!ipaPhonetics) {
+            this.exportBtn.setAttribute('aria-busy', 'false');
             this.updateUI();
             return;
         }
@@ -450,7 +449,6 @@ class LipSyncApp {
         const segments = this.parsePhonetics(ipaPhonetics);
         const { timeline, msPerFrame } = this.generateTimeline(segments, this.audioDuration, fps);
 
-        // Setup MediaRecorder
         const stream = this.canvas.captureStream(fps);
         const mediaRecorder = new MediaRecorder(stream, {
             mimeType: 'video/webm;codecs=vp9,opus',
@@ -468,29 +466,21 @@ class LipSyncApp {
             a.download = `lipsync_${Date.now()}.webm`;
             a.click();
             URL.revokeObjectURL(url);
-
-            // Re-enable controls
-            this.exportProgress.style.display = 'none';
+            // Remove ARIA busy state when export completes
+            this.exportBtn.setAttribute('aria-busy', 'false');
             this.updateUI();
         };
 
-        // Start recording
         mediaRecorder.start();
 
-        // Render frames
         for (let frame = 0; frame < timeline.length; frame++) {
             this.displayViseme(timeline[frame]);
-            this.exportStatus.textContent = `${frame + 1} / ${timeline.length}`;
-
-            // Wait for next frame
             await new Promise(resolve => setTimeout(resolve, msPerFrame));
         }
 
-        // Stop recording
         mediaRecorder.stop();
     }
 
 }
 
-// Initialize app
 new LipSyncApp();
