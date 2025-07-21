@@ -2,12 +2,22 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
     <title>Lip Sync Animation</title>
     <link rel="icon" type="image/png" sizes="32x32" href="https://cowboytoadgames.github.io/website/images/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css">
+    <style>
+        #render-canvas {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            border-radius: var(--pico-border-radius);
+        }
+    </style>
 </head>
 
 <body>
@@ -21,50 +31,36 @@
         }
     </script>
     <!-- Main Editor -->
-    <div id="main-editor" class="container">
-        <div class="form-section">
-            <div class="control-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <button type="button" id="logout-btn" style="background-color: #666; padding: 0.5rem 1rem; font-size: 0.8rem; margin: 0;">Logout</button>
-            </div>
-            <div class="control-group">
-                <label for="character-select">Character:</label>
-                <select id="character-select">
-                    <option value="">Loading characters...</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="angle-select">Angle:</label>
-                <select id="angle-select">
-                    <option value="">Select angle...</option>
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="audio-file">Select Audio File:</label>
-                <input type="file" id="audio-file" accept="audio/*">
-                <div class="error" id="audio-error"></div>
-            </div>
-            <div class="control-group">
-                <label for="text-input">Text to Animate:</label>
-                <textarea id="text-input" placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
-            </div>
-            <div class="control-group">
-                <label for="framerate-select">Framerate (FPS): <span id="framerate-value">16</span></label>
-                <input type="range" id="framerate-select" min="12" max="60" value="16" step="1">
-            </div>
-            <div class="button-group">
-                <button id="preview-btn" disabled>Preview Animation</button>
-                <button id="stop-btn" style="display: none;">Stop</button>
-                <button id="export-btn" class="export-btn" disabled>Export Video</button>
-            </div>
-            <div class="info" id="duration-info"> Audio Duration: <span id="duration-display">0</span> seconds </div>
-            <div class="progress" id="export-progress"> Exporting: <span id="export-status">0 / 0</span> frames </div>
+    <main class="container">
+        <h1>Viseme Tool</h1>
+        <div class="grid">
+            <section>
+                <fieldset>
+                    <label> Character: <select id="character-select">
+                            <option value="">Loading characters...</option>
+                        </select>
+                    </label>
+                    <label> Angle: <span id="angle-value">180°</span>
+                        <input type="range" id="angle-select" min="0" max="4" value="0" step="1" data-angles="270,225,180,135,90">
+                    </label>
+                    <label> Select Audio File: <input type="file" id="audio-file" accept="audio/*">
+                    </label>
+                    <label> Text to Animate: <textarea id="text-input" placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
+                    </label>
+                    <label> Framerate: <span id="framerate-value">20</span> FPS <input type="range" id="framerate-select" min="10" max="30" value="20" step="2">
+                    </label>
+                </fieldset>
+                <button id="preview-btn" class="outline">Preview Animation</button>
+                <button id="stop-btn" class="outline secondary" hidden>Stop</button>
+                <button id="export-btn" class="outline contrast" disabled>Export Video</button>
+            </section>
+            <section>
+                <figure>
+                    <canvas id="render-canvas" width="1080" height="1080"></canvas>
+                </figure>
+            </section>
         </div>
-        <div class="preview-section">
-            <div id="preview-area">
-                <canvas id="render-canvas" width="1080" height="1080"></canvas>
-            </div>
-        </div>
-    </div>
+    </main>
     <script src="lipsync.js"></script>
 </body>
 

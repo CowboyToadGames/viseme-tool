@@ -25,7 +25,12 @@ class LipSyncApp {
         this.animationId = null;
         this.audioElement = null;
         this.imageCache = new Map();
-        this.charactersConfig = null;
+        this.charactersConfig = {
+            characters: [
+                { id: "diego", name: "Diego" },
+                { id: "ted", name: "Ted" }
+            ]
+        };
         this.selectedCharacter = '';
         this.selectedAngle = '';
         this.canvas = null;
@@ -37,73 +42,61 @@ class LipSyncApp {
         this.bindElements();
         this.bindEvents();
         this.initCanvas();
-        this.loadCharactersConfig();
+        this.initAngleSlider();
+        this.populateCharacterDropdown();
+        this.preloadImages().then(() => this.updatePreview());
     }
 
     bindElements() {
-        this.audioFile_input = document.getElementById('audio-file');
-        this.textInput = document.getElementById('text-input');
-        this.logoutBtn = document.getElementById('logout-btn');
-        this.previewBtn = document.getElementById('preview-btn');
-        this.stopBtn = document.getElementById('stop-btn');
-        this.durationInfo = document.getElementById('duration-info');
-        this.durationDisplay = document.getElementById('duration-display');
-        this.renderCanvas = document.getElementById('render-canvas');
-        this.audioError = document.getElementById('audio-error');
-        this.framerateSelect = document.getElementById('framerate-select');
-        this.framerateValue = document.getElementById('framerate-value');
-        this.characterSelect = document.getElementById('character-select');
-        this.angleSelect = document.getElementById('angle-select');
-        this.exportBtn = document.getElementById('export-btn');
-        this.exportProgress = document.getElementById('export-progress');
-        this.exportStatus = document.getElementById('export-status');
+        const elementIds = [
+            'audio-file', 'text-input', 'preview-btn',
+            'stop-btn', 'duration-info', 'duration-display', 'render-canvas',
+            'audio-error', 'framerate-select', 'framerate-value', 'character-select',
+            'angle-select', 'angle-value', 'export-btn', 'export-progress', 'export-status'
+        ];
+
+        elementIds.forEach(id => {
+            const camelCase = id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+            this[camelCase] = document.getElementById(id);
+        });
     }
 
     bindEvents() {
-        // Logout event
-        this.logoutBtn.onclick = () => this.handleLogout();
-
         // Main app events
-        this.audioFile_input.onchange = e => this.handleAudioFile(e);
+        this.audioFile.onchange = e => this.handleAudioFile(e);
         this.textInput.oninput = () => this.updateUI();
         this.previewBtn.onclick = () => this.startAnimation();
         this.stopBtn.onclick = () => this.stopAnimation();
         this.exportBtn.onclick = () => this.exportVideo();
         this.characterSelect.onchange = () => this.handleCharacterChange();
-        this.angleSelect.onchange = () => this.handleAngleChange();
+        this.angleSelect.oninput = () => this.handleAngleChange();
         this.framerateSelect.oninput = () => this.updateFramerateDisplay();
     }
 
     initCanvas() {
         this.canvas = this.renderCanvas;
         this.ctx = this.canvas.getContext('2d');
-        this.ctx.fillRect(0, 0, 1080, 1080);
+        this.ctx.clearRect(0, 0, 1080, 1080);
     }
 
-    async loadCharactersConfig() {
-        try {
-            const response = await fetch('characters.json');
-            if (response.ok) {
-                this.charactersConfig = await response.json();
-                this.populateCharacterDropdown();
-            } else {
-                this.charactersConfig = { characters: [] };
-                this.populateCharacterDropdown();
-            }
-        } catch (error) {
-            console.error('Error loading characters config:', error);
-            this.charactersConfig = { characters: [] };
-            this.populateCharacterDropdown();
-        }
+    initAngleSlider() {
+        // Set initial angle to 180° (index 2 in the angles array)
+        this.angleSelect.value = 2;
+        this.handleAngleChange();
     }
+
 
     populateCharacterDropdown() {
-        this.characterSelect.innerHTML = '<option value="">Select character...</option>';
+        this.characterSelect.innerHTML = '';
 
-        this.charactersConfig.characters.forEach(character => {
+        this.charactersConfig.characters.forEach((character, index) => {
             const option = document.createElement('option');
             option.value = character.id;
             option.textContent = character.name;
+            if (index === 0) {
+                option.selected = true;
+                this.selectedCharacter = character.id;
+            }
             this.characterSelect.appendChild(option);
         });
     }
@@ -112,31 +105,23 @@ class LipSyncApp {
         const selectedCharacterId = this.characterSelect.value;
         this.selectedCharacter = selectedCharacterId;
 
-        this.angleSelect.innerHTML = '<option value="">Select angle...</option>';
-        this.selectedAngle = '';
-
-        if (selectedCharacterId) {
-            const character = this.charactersConfig.characters.find(c => c.id === selectedCharacterId);
-            if (character) {
-                character.angles.forEach(angle => {
-                    const option = document.createElement('option');
-                    option.value = angle;
-                    option.textContent = `${angle}°`;
-                    this.angleSelect.appendChild(option);
-                });
-            }
-        }
-
         this.imageCache.clear();
+        if (this.selectedCharacter && this.selectedAngle !== undefined && this.selectedAngle !== '') {
+            this.preloadImages().then(() => this.updatePreview());
+        }
         this.updateUI();
     }
 
     handleAngleChange() {
-        this.selectedAngle = this.angleSelect.value;
+        const angles = [90, 135, 180, 225, 270, 0];
+        const sliderIndex = parseInt(this.angleSelect.value);
+        this.selectedAngle = angles[sliderIndex];
+
+        this.angleValue.textContent = this.selectedAngle === 0 ? '0°' : this.selectedAngle + '°';
 
         this.imageCache.clear();
-        if (this.selectedCharacter && this.selectedAngle) {
-            this.preloadImages();
+        if (this.selectedCharacter && this.selectedAngle !== undefined) {
+            this.preloadImages().then(() => this.updatePreview());
         }
 
         this.updateUI();
@@ -160,7 +145,6 @@ class LipSyncApp {
         try {
             await Promise.all(loadPromises);
         } catch (error) {
-            console.error('Error preloading images:', error);
         }
     }
 
@@ -206,13 +190,23 @@ class LipSyncApp {
         this.previewBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
         this.exportBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
 
-        if (!this.previewBtn.disabled && !this.animationId) {
-            this.displayViseme('MBP');
+        // Always update preview when not animating
+        if (!this.animationId) {
+            this.updatePreview();
         }
     }
 
     updateFramerateDisplay() {
         this.framerateValue.textContent = this.framerateSelect.value;
+    }
+
+    updatePreview() {
+        const hasCharacter = this.selectedCharacter;
+        const hasAngle = this.selectedAngle;
+
+        if (hasCharacter && hasAngle) {
+            this.displayViseme('MBP');
+        }
     }
 
     showAudioError(message) {
@@ -252,9 +246,7 @@ class LipSyncApp {
             }
 
         } catch (error) {
-            console.error('IPA conversion error:', error);
-            alert(`Error converting text to IPA: ${error.message}`);
-            return null;
+            throw error;
         }
     }
 
@@ -339,10 +331,9 @@ class LipSyncApp {
     }
 
     displayViseme(viseme) {
-        this.ctx.fillRect(0, 0, 1080, 1080);
+        this.ctx.clearRect(0, 0, 1080, 1080);
 
         if (!this.selectedCharacter || !this.selectedAngle) {
-            this.ctx.fillStyle = '#ff7139';
             this.ctx.font = '48px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -366,7 +357,6 @@ class LipSyncApp {
 
             this.ctx.drawImage(img, x, y, drawWidth, drawHeight);
         } else {
-            this.ctx.fillStyle = '#ff7139';
             this.ctx.font = '72px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
@@ -499,17 +489,6 @@ class LipSyncApp {
         // Stop recording
         mediaRecorder.stop();
     }
-
-
-
-
-    handleLogout() {
-        this.apiKey = '';
-        localStorage.removeItem('gemini_api_key');
-        // Redirect to login page
-        window.location.href = 'login.html';
-    }
-
 
 }
 
