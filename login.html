@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Viseme Tool</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cowboytoadgames.github.io/website/images/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <h1>Viseme Tool</h1>
+            <p>Enter your API key to get started</p>
+            <div class="control-group">
+                <input type="password" id="login-api-key" placeholder="Enter your Gemini API key">
+                <div class="error" id="login-error"></div>
+            </div>
+            <button id="login-btn" disabled>Continue</button>
+        </div>
+    </div>
+    <script>
+        class LoginManager {
+            constructor() {
+                this.apiKey = '';
+                this.bindElements();
+                this.bindEvents();
+                this.updateLoginUI();
+            }
+
+            bindElements() {
+                this.loginApiKey = document.getElementById('login-api-key');
+                this.loginBtn = document.getElementById('login-btn');
+                this.loginError = document.getElementById('login-error');
+            }
+
+            bindEvents() {
+                this.loginApiKey.oninput = () => this.updateLoginUI();
+                this.loginBtn.onclick = () => this.handleLogin();
+
+                // Handle Enter key press in password field
+                this.loginApiKey.onkeypress = (e) => {
+                    if (e.key === 'Enter' && !this.loginBtn.disabled) {
+                        this.handleLogin();
+                    }
+                };
+            }
+
+            updateLoginUI() {
+                const hasKey = this.loginApiKey.value.trim().length > 0;
+                this.loginBtn.disabled = !hasKey;
+                this.clearLoginError();
+            }
+
+            showLoginError(message, severity = 'normal') {
+                this.loginError.textContent = message;
+                this.loginError.className = severity === 'severe' ? 'error show severe' : 'error show';
+                this.loginApiKey.classList.add('input-error');
+
+                // Auto-hide error after 5 seconds for normal severity
+                if (severity === 'normal') {
+                    setTimeout(() => this.clearLoginError(), 5000);
+                }
+            }
+
+            clearLoginError() {
+                this.loginError.textContent = '';
+                this.loginError.className = 'error';
+                this.loginApiKey.classList.remove('input-error');
+            }
+
+            async handleLogin() {
+                const apiKey = this.loginApiKey.value.trim();
+                if (!apiKey) {
+                    this.showLoginError('Please enter your API key', 'normal');
+                    return;
+                }
+
+                // Validate API key format
+                if (!apiKey.startsWith('AIza') || apiKey.length < 35) {
+                    this.showLoginError('Invalid API key format. Gemini API keys start with "AIza" and are at least 35 characters long.', 'normal');
+                    return;
+                }
+
+                // Test the API key
+                this.loginBtn.textContent = 'Validating...';
+                this.loginBtn.disabled = true;
+
+                try {
+                    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey);
+
+                    if (response.ok) {
+                        // API key is valid, store it and redirect
+                        localStorage.setItem('gemini_api_key', apiKey);
+                        this.loginBtn.textContent = 'Success! Redirecting...';
+
+                        // Redirect to main application
+                        setTimeout(() => {
+                            window.location.href = 'index.html';
+                        }, 1000);
+                    } else if (response.status === 400) {
+                        const errorData = await response.json().catch(() => ({}));
+                        if (errorData.error && errorData.error.message) {
+                            this.showLoginError('API Error: ' + errorData.error.message, 'normal');
+                        } else {
+                            this.showLoginError('Invalid API key. Please check your key and try again.', 'normal');
+                        }
+                        this.resetLoginButton();
+                    } else if (response.status === 403) {
+                        this.showLoginError('API key does not have permission to access this service.', 'normal');
+                        this.resetLoginButton();
+                    } else {
+                        this.showLoginError('Unable to validate API key. Please check your connection and try again.', 'normal');
+                        this.resetLoginButton();
+                    }
+                } catch (error) {
+                    this.showLoginError('Network error. Please check your connection and try again.', 'normal');
+                    this.resetLoginButton();
+                }
+            }
+
+            resetLoginButton() {
+                this.loginBtn.textContent = 'Continue';
+                this.updateLoginUI();
+            }
+        }
+
+        // Initialize the login manager when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new LoginManager();
+        });
+    </script>
+</body>
+
+</html>

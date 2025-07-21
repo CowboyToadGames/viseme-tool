@@ -17,18 +17,6 @@ const PHONEME_MAP = {
 const VOWELS = new Set(['E', 'O', 'A']);
 const VISEMES = ['MBP', 'E', 'O', 'A', 'FV', 'TS', 'LN'];
 
-// Register service worker
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js')
-            .then((registration) => {
-                console.log('SW registered: ', registration);
-            })
-            .catch((registrationError) => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}
 
 class LipSyncApp {
     constructor() {
@@ -37,7 +25,6 @@ class LipSyncApp {
         this.animationId = null;
         this.audioElement = null;
         this.imageCache = new Map();
-        this.ipaPhonetics = '';
         this.charactersConfig = null;
         this.selectedCharacter = '';
         this.selectedAngle = '';
@@ -45,6 +32,7 @@ class LipSyncApp {
         this.ctx = null;
         this.timeline = [];
         this.msPerFrame = 0;
+        this.apiKey = localStorage.getItem('gemini_api_key') || '';
 
         this.bindElements();
         this.bindEvents();
@@ -53,31 +41,41 @@ class LipSyncApp {
     }
 
     bindElements() {
-        const ids = ['audio-file', 'text-input', 'api-key', 'transcribe-btn', 'ipa-output',
-            'transcribe-status', 'transcribe-error', 'api-error', 'preview-btn',
-            'stop-btn', 'duration-info', 'duration-display', 'render-canvas',
-            'audio-error', 'framerate-select', 'character-select', 'angle-select',
-            'export-btn', 'export-progress', 'export-status'];
-
-        ids.forEach(id => {
-            this[id.replace(/-/g, '_')] = document.getElementById(id);
-        });
+        this.audioFile_input = document.getElementById('audio-file');
+        this.textInput = document.getElementById('text-input');
+        this.logoutBtn = document.getElementById('logout-btn');
+        this.previewBtn = document.getElementById('preview-btn');
+        this.stopBtn = document.getElementById('stop-btn');
+        this.durationInfo = document.getElementById('duration-info');
+        this.durationDisplay = document.getElementById('duration-display');
+        this.renderCanvas = document.getElementById('render-canvas');
+        this.audioError = document.getElementById('audio-error');
+        this.framerateSelect = document.getElementById('framerate-select');
+        this.framerateValue = document.getElementById('framerate-value');
+        this.characterSelect = document.getElementById('character-select');
+        this.angleSelect = document.getElementById('angle-select');
+        this.exportBtn = document.getElementById('export-btn');
+        this.exportProgress = document.getElementById('export-progress');
+        this.exportStatus = document.getElementById('export-status');
     }
 
     bindEvents() {
-        this.audio_file.onchange = e => this.handleAudioFile(e);
-        this.text_input.oninput = () => this.updateUI();
-        this.api_key.oninput = () => this.updateUI();
-        this.transcribe_btn.onclick = () => this.transcribeText();
-        this.preview_btn.onclick = () => this.startAnimation();
-        this.stop_btn.onclick = () => this.stopAnimation();
-        this.export_btn.onclick = () => this.exportVideo();
-        this.character_select.onchange = () => this.handleCharacterChange();
-        this.angle_select.onchange = () => this.handleAngleChange();
+        // Logout event
+        this.logoutBtn.onclick = () => this.handleLogout();
+
+        // Main app events
+        this.audioFile_input.onchange = e => this.handleAudioFile(e);
+        this.textInput.oninput = () => this.updateUI();
+        this.previewBtn.onclick = () => this.startAnimation();
+        this.stopBtn.onclick = () => this.stopAnimation();
+        this.exportBtn.onclick = () => this.exportVideo();
+        this.characterSelect.onchange = () => this.handleCharacterChange();
+        this.angleSelect.onchange = () => this.handleAngleChange();
+        this.framerateSelect.oninput = () => this.updateFramerateDisplay();
     }
 
     initCanvas() {
-        this.canvas = this.render_canvas;
+        this.canvas = this.renderCanvas;
         this.ctx = this.canvas.getContext('2d');
         this.ctx.fillRect(0, 0, 1080, 1080);
     }
@@ -100,21 +98,21 @@ class LipSyncApp {
     }
 
     populateCharacterDropdown() {
-        this.character_select.innerHTML = '<option value="">Select character...</option>';
+        this.characterSelect.innerHTML = '<option value="">Select character...</option>';
 
         this.charactersConfig.characters.forEach(character => {
             const option = document.createElement('option');
             option.value = character.id;
             option.textContent = character.name;
-            this.character_select.appendChild(option);
+            this.characterSelect.appendChild(option);
         });
     }
 
     handleCharacterChange() {
-        const selectedCharacterId = this.character_select.value;
+        const selectedCharacterId = this.characterSelect.value;
         this.selectedCharacter = selectedCharacterId;
 
-        this.angle_select.innerHTML = '<option value="">Select angle...</option>';
+        this.angleSelect.innerHTML = '<option value="">Select angle...</option>';
         this.selectedAngle = '';
 
         if (selectedCharacterId) {
@@ -124,7 +122,7 @@ class LipSyncApp {
                     const option = document.createElement('option');
                     option.value = angle;
                     option.textContent = `${angle}°`;
-                    this.angle_select.appendChild(option);
+                    this.angleSelect.appendChild(option);
                 });
             }
         }
@@ -134,7 +132,7 @@ class LipSyncApp {
     }
 
     handleAngleChange() {
-        this.selectedAngle = this.angle_select.value;
+        this.selectedAngle = this.angleSelect.value;
 
         this.imageCache.clear();
         if (this.selectedCharacter && this.selectedAngle) {
@@ -167,7 +165,7 @@ class LipSyncApp {
     }
 
     handleAudioFile(e) {
-        this.clearError('audio');
+        this.clearAudioError();
         const file = e.target.files[0];
 
         if (!file) {
@@ -180,13 +178,13 @@ class LipSyncApp {
 
         audio.onloadedmetadata = () => {
             this.audioDuration = audio.duration;
-            this.duration_display.textContent = audio.duration.toFixed(2);
-            this.duration_info.style.display = 'block';
+            this.durationDisplay.textContent = audio.duration.toFixed(2);
+            this.durationInfo.style.display = 'block';
             this.updateUI();
         };
 
         audio.onerror = () => {
-            this.showError('audio', 'Error loading audio file');
+            this.showAudioError('Error loading audio file');
             this.resetAudio();
         };
     }
@@ -194,43 +192,39 @@ class LipSyncApp {
     resetAudio() {
         this.audioFile = null;
         this.audioDuration = 0;
-        this.duration_info.style.display = 'none';
+        this.durationInfo.style.display = 'none';
         this.updateUI();
     }
 
     updateUI() {
-        const hasApiKey = this.api_key.value.trim();
-        const hasText = this.text_input.value.trim();
+        const hasApiKey = this.apiKey;
+        const hasText = this.textInput.value.trim();
         const hasAudio = this.audioFile;
-        const hasIPA = this.ipaPhonetics;
         const hasCharacter = this.selectedCharacter;
         const hasAngle = this.selectedAngle;
 
-        this.transcribe_btn.disabled = !hasApiKey || !hasText;
-        this.preview_btn.disabled = !hasAudio || !hasIPA || !hasCharacter || !hasAngle;
-        this.export_btn.disabled = !hasAudio || !hasIPA || !hasCharacter || !hasAngle;
+        this.previewBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
+        this.exportBtn.disabled = !hasApiKey || !hasAudio || !hasText || !hasCharacter || !hasAngle;
 
-        if (!this.preview_btn.disabled && !this.animationId) {
+        if (!this.previewBtn.disabled && !this.animationId) {
             this.displayViseme('MBP');
         }
     }
 
-    showError(type, message) {
-        this[`${type}_error`].textContent = message;
+    updateFramerateDisplay() {
+        this.framerateValue.textContent = this.framerateSelect.value;
     }
 
-    clearError(type) {
-        this[`${type}_error`].textContent = '';
+    showAudioError(message) {
+        this.audioError.textContent = message;
     }
 
-    async transcribeText() {
-        const apiKey = this.api_key.value.trim();
-        const text = this.text_input.value.trim();
+    clearAudioError() {
+        this.audioError.textContent = '';
+    }
 
-        this.clearError('transcribe');
-        this.clearError('api');
-        this.transcribe_status.style.display = 'block';
-        this.transcribe_btn.disabled = true;
+    async convertTextToIPA(text) {
+        const apiKey = this.apiKey;
 
         try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
@@ -239,7 +233,7 @@ class LipSyncApp {
                 body: JSON.stringify({
                     contents: [{
                         parts: [{
-                            text: `Convert this text to IPA (International Phonetic Alphabet) notation. When there are two or more sentences, use dots (.) to seperate them. Do not place a dot at the end. Return only the IPA transcription, nothing else: "${text}"`
+                            text: `Convert this text to IPA (International Phonetic Alphabet) notation with standard British pronunciation. When there are two or more sentences, use dots (.) to seperate them. Do not place a dot at the end. Return only the IPA transcription, nothing else: "${text}"`
                         }]
                     }]
                 })
@@ -252,22 +246,15 @@ class LipSyncApp {
             const data = await response.json();
 
             if (data.candidates?.[0]?.content) {
-                this.ipaPhonetics = data.candidates[0].content.parts[0].text.trim();
-                this.ipa_output.textContent = this.ipaPhonetics;
-                this.updateUI();
+                return data.candidates[0].content.parts[0].text.trim();
             } else {
                 throw new Error('Invalid response format from Gemini API');
             }
 
         } catch (error) {
-            console.error('Transcription error:', error);
-            const errorType = error.message.includes('API_KEY_INVALID') || error.message.includes('403') ? 'api' : 'transcribe';
-            const message = errorType === 'api' ? 'Invalid API key. Please check your Gemini API key.' : `Error: ${error.message}`;
-            this.showError(errorType, message);
-        } finally {
-            this.transcribe_status.style.display = 'none';
-            this.transcribe_btn.disabled = false;
-            this.updateUI();
+            console.error('IPA conversion error:', error);
+            alert(`Error converting text to IPA: ${error.message}`);
+            return null;
         }
     }
 
@@ -387,14 +374,19 @@ class LipSyncApp {
         }
     }
 
-    startAnimation() {
+    async startAnimation() {
         this.stopAnimation();
 
-        if (!this.ipaPhonetics) return;
+        const text = this.textInput.value.trim();
+        if (!text) return;
 
-        const fps = parseInt(this.framerate_select.value);
+        // Convert text to IPA on-demand
+        const ipaPhonetics = await this.convertTextToIPA(text);
+        if (!ipaPhonetics) return;
 
-        const segments = this.parsePhonetics(this.ipaPhonetics);
+        const fps = parseInt(this.framerateSelect.value);
+
+        const segments = this.parsePhonetics(ipaPhonetics);
         const { timeline, msPerFrame } = this.generateTimeline(segments, this.audioDuration, fps);
 
         this.timeline = timeline;
@@ -403,9 +395,9 @@ class LipSyncApp {
         this.audioElement = new Audio(URL.createObjectURL(this.audioFile));
         this.audioElement.play();
 
-        this.preview_btn.style.display = 'none';
-        this.stop_btn.style.display = 'inline-block';
-        this.export_btn.disabled = true;
+        this.previewBtn.style.display = 'none';
+        this.stopBtn.style.display = 'inline-block';
+        this.exportBtn.disabled = true;
 
         const startTime = performance.now();
         let lastFrame = -1;
@@ -441,23 +433,31 @@ class LipSyncApp {
         }
 
         this.displayViseme('MBP');
-        this.preview_btn.style.display = 'inline-block';
-        this.stop_btn.style.display = 'none';
-        this.export_btn.disabled = false;
+        this.previewBtn.style.display = 'inline-block';
+        this.stopBtn.style.display = 'none';
+        this.exportBtn.disabled = false;
         this.updateUI();
     }
 
     async exportVideo() {
-        if (!this.ipaPhonetics || !this.audioFile) return;
+        const text = this.textInput.value.trim();
+        if (!text || !this.audioFile) return;
 
         // Disable controls
-        this.preview_btn.disabled = true;
-        this.export_btn.disabled = true;
-        this.stop_btn.disabled = true;
-        this.export_progress.style.display = 'block';
+        this.previewBtn.disabled = true;
+        this.exportBtn.disabled = true;
+        this.stopBtn.disabled = true;
+        this.exportProgress.style.display = 'block';
 
-        const fps = parseInt(this.framerate_select.value);
-        const segments = this.parsePhonetics(this.ipaPhonetics);
+        // Convert text to IPA on-demand
+        const ipaPhonetics = await this.convertTextToIPA(text);
+        if (!ipaPhonetics) {
+            this.updateUI();
+            return;
+        }
+
+        const fps = parseInt(this.framerateSelect.value);
+        const segments = this.parsePhonetics(ipaPhonetics);
         const { timeline, msPerFrame } = this.generateTimeline(segments, this.audioDuration, fps);
 
         // Setup MediaRecorder
@@ -480,7 +480,7 @@ class LipSyncApp {
             URL.revokeObjectURL(url);
 
             // Re-enable controls
-            this.export_progress.style.display = 'none';
+            this.exportProgress.style.display = 'none';
             this.updateUI();
         };
 
@@ -490,7 +490,7 @@ class LipSyncApp {
         // Render frames
         for (let frame = 0; frame < timeline.length; frame++) {
             this.displayViseme(timeline[frame]);
-            this.export_status.textContent = `${frame + 1} / ${timeline.length}`;
+            this.exportStatus.textContent = `${frame + 1} / ${timeline.length}`;
 
             // Wait for next frame
             await new Promise(resolve => setTimeout(resolve, msPerFrame));
@@ -499,6 +499,18 @@ class LipSyncApp {
         // Stop recording
         mediaRecorder.stop();
     }
+
+
+
+
+    handleLogout() {
+        this.apiKey = '';
+        localStorage.removeItem('gemini_api_key');
+        // Redirect to login page
+        window.location.href = 'login.html';
+    }
+
+
 }
 
 // Initialize app

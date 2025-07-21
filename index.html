@@ -5,369 +5,66 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lip Sync Animation</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://cowboytoadgames.github.io/website/images/favicon.ico">
+    <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600;900&amp;display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
-    <link rel="stylesheet" href="https://cowboytoadgames.github.io/website/styles.css">
-
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#141414">
-
-    <!-- Apple PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="LipSync">
-    <link rel="apple-touch-icon" href="icon-192.png">
-
-    <style>
-        body {
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
-            background: linear-gradient(135deg, var(--dark-primary) 0%, #0d0d0d 100%);
-        }
-
-        .container {
-            background-color: var(--dark-secondary);
-            padding: 2.5rem;
-            border-radius: 1.5rem;
-            display: flex;
-            gap: 40px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 100px rgba(255, 113, 57, 0.1);
-            max-width: 1400px;
-            width: 100%;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .form-section {
-            min-width: 420px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .control-group {
-            margin-bottom: 1.75rem;
-        }
-
-        .control-group:last-child {
-            margin-bottom: 0;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 10px;
-            font-weight: 600;
-            color: var(--light-primary);
-            font-size: 0.95rem;
-            letter-spacing: 0.3px;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            padding: 1rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.75rem;
-            background-color: var(--dark-tertiary);
-            color: var(--light-primary);
-            transition: all 0.2s ease;
-            font-size: 0.95rem;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            background-color: rgba(255, 113, 57, 0.05);
-            box-shadow: 0 0 0 3px rgba(255, 113, 57, 0.1);
-        }
-
-        textarea {
-            min-height: 3rem;
-            resize: vertical;
-            max-height: 120px;
-        }
-
-        button {
-            background-color: var(--accent);
-            color: white;
-            padding: 14px 28px;
-            border: none;
-            border-radius: 0.75rem;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 600;
-            margin-top: 10px;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 15px rgba(255, 113, 57, 0.3);
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 113, 57, 0.4);
-        }
-
-        button:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        button:disabled {
-            background-color: var(--dark-tertiary);
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-            opacity: 0.6;
-        }
-
-        .transcribe-btn {
-            background-color: #2196F3;
-            box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
-        }
-
-        .transcribe-btn:hover:not(:disabled) {
-            box-shadow: 0 6px 20px rgba(33, 150, 243, 0.4);
-        }
-
-        .export-btn {
-            background-color: #4CAF50;
-            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-        }
-
-        .export-btn:hover:not(:disabled) {
-            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-        }
-
-        .preview-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #preview-area {
-            text-align: center;
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
-            border-radius: 1rem;
-            border: 2px solid rgba(255, 255, 255, 0.05);
-            min-height: 500px;
-            overflow: hidden;
-            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
-        }
-
-        #render-canvas {
-            max-width: 100%;
-            max-height: 100%;
-            object-fit: contain;
-            border-radius: 0.5rem;
-        }
-
-        .viseme-fallback {
-            padding: 20px;
-            background: rgba(255, 113, 57, 0.1);
-            border-radius: 0.75rem;
-            font-size: 18px;
-            font-weight: 600;
-            color: var(--accent);
-        }
-
-        .error {
-            color: #ff4444;
-            font-size: 14px;
-            margin-top: 8px;
-            font-weight: 500;
-        }
-
-        .status {
-            color: #2196F3;
-            font-style: italic;
-            display: none;
-            margin-top: 8px;
-            font-size: 14px;
-        }
-
-        #ipa-output {
-            background: linear-gradient(135deg, #2a2a2a 0%, #252525 100%);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 14px;
-            border-radius: 0.75rem;
-            min-height: 45px;
-            font-family: 'Courier New', monospace;
-            margin-top: 10px;
-            color: #f4f4f9;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-
-        .info {
-            margin-top: 12px;
-            padding: 14px;
-            background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%);
-            border: 1px solid rgba(33, 150, 243, 0.3);
-            border-radius: 0.75rem;
-            font-size: 14px;
-            display: none;
-            color: #90caf9;
-            font-weight: 500;
-        }
-
-        .progress {
-            margin-top: 12px;
-            padding: 14px;
-            background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
-            border: 1px solid rgba(76, 175, 80, 0.3);
-            border-radius: 0.75rem;
-            font-size: 14px;
-            display: none;
-            color: #81c784;
-            font-weight: 500;
-        }
-
-        /* Button group styling */
-        .button-group {
-            display: flex;
-            gap: 12px;
-            margin-top: 1.5rem;
-        }
-
-        .button-group button {
-            flex: 1;
-            margin-top: 0;
-        }
-
-        @media (max-width: 1024px) {
-            body {
-                padding: 1rem;
-            }
-
-            .container {
-                flex-direction: column;
-                max-width: 600px;
-                padding: 2rem;
-                gap: 30px;
-            }
-
-            .form-section,
-            .preview-section {
-                min-width: unset;
-            }
-
-            #preview-area {
-                min-height: 300px;
-            }
-
-            .button-group {
-                flex-direction: column;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 1.5rem;
-            }
-
-            label {
-                font-size: 0.9rem;
-            }
-
-            input,
-            select,
-            textarea {
-                font-size: 0.9rem;
-                padding: 0.875rem;
-            }
-
-            button {
-                padding: 12px 24px;
-                font-size: 15px;
-            }
-        }
-    </style>
 </head>
 
 <body>
-    <div class="container">
+    <!-- Authentication check and redirect -->
+    <script>
+        // Check if user is logged in before loading the main application
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) {
+            // Redirect to login page if not authenticated
+            window.location.href = 'login.html';
+        }
+    </script>
+    <!-- Main Editor -->
+    <div id="main-editor" class="container">
         <div class="form-section">
-            <div class="control-group">
-                <label for="api-key">Gemini API Key:</label>
-                <input type="password" id="api-key" placeholder="Enter your Gemini API key">
-                <div class="error" id="api-error"></div>
+            <div class="control-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <button type="button" id="logout-btn" style="background-color: #666; padding: 0.5rem 1rem; font-size: 0.8rem; margin: 0;">Logout</button>
             </div>
-
             <div class="control-group">
                 <label for="character-select">Character:</label>
                 <select id="character-select">
                     <option value="">Loading characters...</option>
                 </select>
             </div>
-
             <div class="control-group">
                 <label for="angle-select">Angle:</label>
                 <select id="angle-select">
                     <option value="">Select angle...</option>
                 </select>
             </div>
-
             <div class="control-group">
                 <label for="audio-file">Select Audio File:</label>
                 <input type="file" id="audio-file" accept="audio/*">
                 <div class="error" id="audio-error"></div>
             </div>
-
             <div class="control-group">
                 <label for="text-input">Text to Animate:</label>
-                <textarea id="text-input"
-                    placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
-                <button id="transcribe-btn" class="transcribe-btn" disabled>Convert to IPA</button>
-                <div class="status" id="transcribe-status">Converting to phonetic notation...</div>
-                <div class="error" id="transcribe-error"></div>
+                <textarea id="text-input" placeholder="Enter the text you want to animate (e.g., Hello world)"></textarea>
             </div>
-
             <div class="control-group">
-                <label for="ipa-output">IPA Phonetic Output:</label>
-                <div id="ipa-output">IPA transcription will appear here</div>
+                <label for="framerate-select">Framerate (FPS): <span id="framerate-value">16</span></label>
+                <input type="range" id="framerate-select" min="12" max="60" value="16" step="1">
             </div>
-
-            <div class="control-group">
-                <label for="framerate-select">Framerate (FPS):</label>
-                <select id="framerate-select">
-                    <option value="12">12 FPS</option>
-                    <option value="16" selected>16 FPS</option>
-                    <option value="24">24 FPS</option>
-                    <option value="30">30 FPS</option>
-                    <option value="60">60 FPS</option>
-                </select>
-            </div>
-
             <div class="button-group">
                 <button id="preview-btn" disabled>Preview Animation</button>
                 <button id="stop-btn" style="display: none;">Stop</button>
                 <button id="export-btn" class="export-btn" disabled>Export Video</button>
             </div>
-
-            <div class="info" id="duration-info">
-                Audio Duration: <span id="duration-display">0</span> seconds
-            </div>
-
-            <div class="progress" id="export-progress">
-                Exporting: <span id="export-status">0 / 0</span> frames
-            </div>
+            <div class="info" id="duration-info"> Audio Duration: <span id="duration-display">0</span> seconds </div>
+            <div class="progress" id="export-progress"> Exporting: <span id="export-status">0 / 0</span> frames </div>
         </div>
-
         <div class="preview-section">
             <div id="preview-area">
                 <canvas id="render-canvas" width="1080" height="1080"></canvas>
             </div>
         </div>
     </div>
-
     <script src="lipsync.js"></script>
 </body>
 
