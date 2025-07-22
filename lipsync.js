@@ -328,6 +328,7 @@ class LipSyncApp {
 
         const img = this.imageCache.get(viseme);
         if (img && img.complete && img.naturalHeight !== 0) {
+            this.canvas.setAttribute('aria-busy', 'false');
             const aspectRatio = img.naturalWidth / img.naturalHeight;
             let drawWidth = 800;
             let drawHeight = drawWidth / aspectRatio;
@@ -342,10 +343,7 @@ class LipSyncApp {
 
             this.ctx.drawImage(img, x, y, drawWidth, drawHeight);
         } else {
-            this.ctx.font = '72px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(viseme, 540, 540);
+            this.canvas.setAttribute('aria-busy', 'true');
         }
     }
 
@@ -360,16 +358,14 @@ class LipSyncApp {
             return;
         }
 
-        // Set ARIA busy state during API call
         this.previewBtn.setAttribute('aria-busy', 'true');
-        
+
         const ipaPhonetics = await this.convertTextToIPA(text);
         if (!ipaPhonetics) {
             this.previewBtn.setAttribute('aria-busy', 'false');
             return;
         }
-        
-        // Remove ARIA busy state after API call
+
         this.previewBtn.setAttribute('aria-busy', 'false');
 
         const fps = parseInt(this.framerateSelect.value);
@@ -434,8 +430,7 @@ class LipSyncApp {
         this.previewBtn.disabled = true;
         this.exportBtn.disabled = true;
         this.stopBtn.disabled = true;
-        
-        // Set ARIA busy state during export process
+
         this.exportBtn.setAttribute('aria-busy', 'true');
 
         const ipaPhonetics = await this.convertTextToIPA(text);
@@ -466,7 +461,6 @@ class LipSyncApp {
             a.download = `lipsync_${Date.now()}.webm`;
             a.click();
             URL.revokeObjectURL(url);
-            // Remove ARIA busy state when export completes
             this.exportBtn.setAttribute('aria-busy', 'false');
             this.updateUI();
         };
